@@ -119,9 +119,18 @@
         <div id="prepayment-container" class="hidden p-6 border border-green-300 rounded-lg bg-green-50 mb-8">
             <h2 class="text-2xl font-semibold text-green-800 mb-4">Add Prepayments</h2>
 
+            <!-- Reduction Option (Moved above Prepayment Frequency) -->
+            <div class="mb-6">
+                <label for="reduction-option" class="block text-sm font-medium text-gray-700 mb-1">After Prepayment, Reduce:</label>
+                <!-- ADDED onchange="updatePrepaymentOptions()" -->
+                <select id="reduction-option" class="input-field" onchange="updatePrepaymentOptions()">
+                    <option value="tenure">Loan Tenure (Recommended for max savings)</option>
+                    <option value="emi">Monthly EMI</option>
+                </select>
+            </div>
             <!-- Ensure prepayment controls stack on small screens -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <!-- Prepayment Frequency (Numbering removed) -->
+                <!-- Prepayment Frequency -->
                 <div>
                     <label for="prepayment-type" class="block text-sm font-medium text-gray-700 mb-1">Prepayment Frequency</label>
                     <select id="prepayment-type" onchange="updatePrepaymentInputs()" class="input-field">
@@ -136,12 +145,14 @@
                 </div>
 
                 <!-- Prepayment Amount (for regular and one-time) -->
+                <!-- RE-ENABLED/VISIBILITY FOR ALL NON-CUSTOM OPTIONS -->
                 <div id="prepayment-amount-div">
                     <label for="prepayment-amount" class="block text-sm font-medium text-gray-700 mb-1">Prepayment Amount (in addition to EMI)</label>
                     <input type="number" id="prepayment-amount" placeholder="Amount (e.g., 50000)" class="input-field" min="0" value="0">
                 </div>
 
                 <!-- Custom Month Input (NEW Dynamic UI) -->
+                <!-- This section is only shown when 'Custom Schedule' is selected -->
                 <div id="custom-months-div" class="col-span-1 md:col-span-2 hidden p-4 border border-green-200 rounded-lg bg-green-100">
                     <label class="block text-sm font-medium text-green-800 mb-2">Custom Prepayment Entry</label>
                     
@@ -163,15 +174,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Reduction Option (Numbering removed) -->
-            <div class="mb-6">
-                <label for="reduction-option" class="block text-sm font-medium text-gray-700 mb-1">After Prepayment, Reduce:</label>
-                <select id="reduction-option" class="input-field">
-                    <option value="tenure">Loan Tenure (Recommended for max savings)</option>
-                    <option value="emi">Monthly EMI</option>
-                </select>
             </div>
 
             <button onclick="applyPrepayments()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg">
@@ -255,7 +257,7 @@
         let loanStartDateString = ''; // YYYY-MM string for the loan start date
         
         // Storage for custom prepayments: Array of { monthIndex: number, date: string, amount: number }
-        let customPayments = []; 
+        let customPayments = []; 
 
         // Currency format set to minimumFractionDigits: 0 (nearest Rupee)
         const CURRENCY_FORMAT = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 });
@@ -387,7 +389,7 @@
                 const cells = row.querySelectorAll('td');
 
                 cells.forEach(cell => {
-                    // Extract text content, remove non-numeric characters (like ₹ or ,) 
+                    // Extract text content, remove non-numeric characters (like ₹ or ,) 
                     // and handle special indicators like "(New)" for clean numbers
                     let content = cell.textContent.trim();
                     
@@ -395,7 +397,7 @@
                     content = content.replace(/₹/g, '').replace(/,/g, '').replace(/\(New\)/g, '').trim();
 
                     // Replace non-breaking spaces if any
-                    content = content.replace(/\s+/g, ' '); 
+                    content = content.replace(/\s+/g, ' '); 
                     
                     // Enclose content in quotes to handle dates/text fields
                     rowData.push(`"${content}"`);
@@ -415,7 +417,7 @@
             
             // Use a temporary anchor element to trigger the download
             const link = document.createElement("a");
-            if (link.download !== undefined) { 
+            if (link.download !== undefined) { 
                 const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
                 link.setAttribute("download", filename);
@@ -467,8 +469,8 @@
                 
                 if (outstanding + interest <= payment) {
                     payment = outstanding + interest;
-                    principalPaid = outstanding; 
-                    interestPaid = interest; 
+                    principalPaid = outstanding; 
+                    interestPaid = interest; 
                     outstandingEnd = 0;
                 } else {
                     interestPaid = interest;
@@ -489,7 +491,7 @@
                 // Final rounding of the monthly principal and new outstanding balance
                 principalPaid = roundToRupee(principalPaid);
                 // Ensure outstanding end calculation uses the rounded principal paid
-                outstandingEnd = roundToRupee(outstanding - principalPaid); 
+                outstandingEnd = roundToRupee(outstanding - principalPaid); 
                 
                 // Handle the case where the rounding caused a slight overshoot/undershoot on the final payment
                 if (outstandingEnd < 0) outstandingEnd = 0;
@@ -521,37 +523,100 @@
 
         // --- UI Event Handlers (Prepayment) ---
 
+        /**
+         * Dynamically updates the available prepayment types based on the selected reduction option.
+         */
+        function updatePrepaymentOptions() {
+            const reductionOption = document.getElementById('reduction-option').value;
+            const prepaymentSelect = document.getElementById('prepayment-type');
+            
+            // These options are disabled/hidden for EMI reduction, as they usually reduce tenure by default
+            const periodicOptions = ['monthly', 'quarterly', 'six-monthly', 'yearly'];
+
+            let shouldResetSelection = false;
+            const currentSelection = prepaymentSelect.value;
+
+            prepaymentSelect.querySelectorAll('option').forEach(option => {
+                const isPeriodic = periodicOptions.includes(option.value);
+
+                if (reductionOption === 'emi') {
+                    // In EMI reduction mode, disable periodic options
+                    if (isPeriodic) {
+                        option.disabled = true;
+                        option.hidden = true;
+                        if (option.value === currentSelection) {
+                            shouldResetSelection = true;
+                        }
+                    } else {
+                        option.disabled = false;
+                        option.hidden = false;
+                    }
+                } else {
+                    // In Tenure reduction mode, enable all options
+                    option.disabled = false;
+                    option.hidden = false;
+                }
+            });
+
+            if (shouldResetSelection) {
+                // If a newly disabled option was selected, fall back to "none"
+                prepaymentSelect.value = 'none';
+            }
+            // Always call updatePrepaymentInputs to ensure the amount/custom inputs reflect the final selection
+            updatePrepaymentInputs(); 
+        }
+
+        /**
+         * FIX: Update to only show the single amount field for all options EXCEPT 'custom'
+         */
         function updatePrepaymentInputs() {
             const type = document.getElementById('prepayment-type').value;
             const amountDiv = document.getElementById('prepayment-amount-div');
             const customDiv = document.getElementById('custom-months-div');
+            const amountInput = document.getElementById('prepayment-amount');
 
-            // Hide/Show controls based on type
-            const isRegularOrOneTime = (type !== 'custom' && type !== 'none');
-            const isOneTime = (type === 'one-time');
+            // Determine if we should show the single amount input (all except 'custom')
+            const isSingleAmount = (type !== 'custom' && type !== 'none');
             
-            amountDiv.classList.toggle('hidden', !isRegularOrOneTime);
+            // Show/Hide controls based on type
+            amountDiv.classList.toggle('hidden', type === 'custom' || type === 'none');
             customDiv.classList.toggle('hidden', type !== 'custom');
 
-            // Handle One-Time specific input (Now using select dropdowns)
-            let monthInput = document.getElementById('one-time-month-input');
-            let yearInput = document.getElementById('one-time-year-input');
-
-            if (isOneTime) {
+            // Update label for single amount input based on frequency
+            if (type === 'one-time') {
                 amountDiv.querySelector('label').textContent = 'One-Time Lump Sum Amount';
+                // Show date selectors only for one-time payment type
+                showOneTimeDateSelectors(true);
+            } else if (isSingleAmount) {
+                amountDiv.querySelector('label').textContent = 'Prepayment Amount (in addition to EMI)';
+                // Hide date selectors for periodic payments
+                showOneTimeDateSelectors(false);
+            } else {
+                // If 'none' or 'custom' is selected, hide date selectors
+                showOneTimeDateSelectors(false);
+            }
+        }
+        
+        /**
+         * Manages the visibility of the one-time date selectors within the amount div.
+         * @param {boolean} show - Whether to show or hide the date selectors.
+         */
+        function showOneTimeDateSelectors(show) {
+            const amountDiv = document.getElementById('prepayment-amount-div');
+            let wrapper = document.getElementById('one-time-date-wrapper');
 
-                if (!monthInput) {
-                    // Create wrapper div for date selects
-                    const wrapper = document.createElement('div');
+            if (show) {
+                if (!wrapper) {
+                    wrapper = document.createElement('div');
                     wrapper.id = 'one-time-date-wrapper';
                     wrapper.className = 'flex gap-2 mt-2';
 
-                    monthInput = document.createElement('select');
+                    const monthInput = document.createElement('select');
                     monthInput.id = 'one-time-month-input';
                     monthInput.className = 'input-field w-1/2';
                     monthInput.required = true;
 
-                    yearInput = document.createElement('select');
+                    const yearInput = document.createElement('select');
                     yearInput.id = 'one-time-year-input';
                     yearInput.className = 'input-field w-1/2';
                     yearInput.required = true;
@@ -562,27 +627,26 @@
 
                     // Repopulate month/year options
                     populateMonthYearSelects(monthInput, yearInput);
-                    
+
                     // Set default to loan start date if available
                     if (loanStartDateString) {
                         const [year, month] = loanStartDateString.split('-');
                         monthInput.value = month;
                         yearInput.value = year;
                     } else {
-                        // Or set default to current date
                         const today = new Date();
                         monthInput.value = String(today.getMonth() + 1).padStart(2, '0');
                         yearInput.value = today.getFullYear();
                     }
                 }
+                wrapper.classList.remove('hidden');
             } else {
-                amountDiv.querySelector('label').textContent = 'Prepayment Amount (in addition to EMI)';
-                const wrapper = document.getElementById('one-time-date-wrapper');
                 if (wrapper) {
-                    wrapper.remove();
+                    wrapper.classList.add('hidden');
                 }
             }
         }
+
 
         /**
          * Helper function to get the current YYYY-MM string from the Custom Prepayment selects.
@@ -688,6 +752,7 @@
 
         /**
          * Primary function to calculate the initial loan and display the schedule.
+         * FIX: Added reset logic to clear prepayment fields.
          */
         function calculateLoan() {
             const principal = parseFloat(document.getElementById('principal').value);
@@ -704,10 +769,18 @@
                 showMessage('Maximum Tenure Exceeded', 'The maximum supported loan tenure is 25 years.', 'warning');
                 return;
             }
+            
+            // --- RESET PREPAYMENT STATE ---
+            document.getElementById('prepayment-type').value = 'none';
+            document.getElementById('prepayment-amount').value = '0';
+            customPayments = []; // Clear custom payments array
+            renderCustomPaymentsList(); // Clear UI list
+            updatePrepaymentInputs(); // Reset UI visibility
+            // -----------------------------
 
             const monthlyRate = (ratePercent / 100) / 12;
             const tenureMonths = Math.round(tenureYears * 12);
-            const maxMonths = 300 * 3; // Max 25 years * 12 months * a factor of 3 to allow for reduction in tenure
+            const maxMonths = 300; // Max 25 years * 12 months, using a safer limit for initial calculation
             
             // Store initial values globally
             initialPrincipal = principal;
@@ -724,7 +797,7 @@
             const result = generateAmortizationSchedule(principal, monthlyRate, emi, maxMonths);
             
             // Check for calculation errors
-            if (result.schedule.length === 0 && principal > 0) return; 
+            if (result.schedule.length === 0 && principal > 0) return; 
 
             initialTotalInterest = result.totalInterest;
             initialTotalPayments = result.totalPayments;
@@ -756,7 +829,7 @@
             const prepaymentType = document.getElementById('prepayment-type').value;
             const reductionOption = document.getElementById('reduction-option').value;
             const startDateString = loanStartDateString; // Use the stored start date
-            const maxMonths = 300 * 3; 
+            const maxMonths = 300 * 3; // A sufficiently high number of months to ensure completion
 
             if (!startDateString || initialPrincipal === 0) {
                  showMessage('Missing Data', 'Please click "Proceed" first to calculate the initial loan details.', 'error');
@@ -776,7 +849,6 @@
                 }
                 customPayments.forEach(p => {
                     prepaymentsMap[p.monthIndex] = (prepaymentsMap[p.monthIndex] || 0) + p.amount;
-                    totalPrepaymentAmount += p.amount;
                 });
             } else if (prepaymentType !== 'none') {
                 prepaymentAmount = parseFloat(document.getElementById('prepayment-amount').value);
@@ -789,19 +861,20 @@
                 prepaymentAmount = roundToRupee(prepaymentAmount);
 
                 if (prepaymentType === 'one-time') {
+                    // Check for the dynamically created selectors
                     const monthInput = document.getElementById('one-time-month-input');
                     const yearInput = document.getElementById('one-time-year-input');
 
                     if (!monthInput || !yearInput) {
-                        showMessage('Prepayment Error', 'One-time date selectors are missing. Please select a prepayment type again.', 'error');
+                        showMessage('Prepayment Error', 'One-time date selectors are missing. Please ensure you have calculated the loan and selected the date.', 'error');
                         return;
                     }
 
                     const oneTimeDate = `${yearInput.value}-${monthInput.value}`;
                     
                     if (!oneTimeDate) {
-                         showMessage('Prepayment Error', 'Please select a Month and Year for the one-time payment.', 'error');
-                         return;
+                          showMessage('Prepayment Error', 'Please select a Month and Year for the one-time payment.', 'error');
+                          return;
                     }
                     
                     const oneTimeMonth = getMonthIndexFromDate(oneTimeDate, loanStartDateString); // Convert to index
@@ -812,7 +885,6 @@
                     }
                     
                     prepaymentsMap[oneTimeMonth] = prepaymentAmount;
-                    totalPrepaymentAmount = prepaymentAmount;
 
                 } else {
                     // Regular prepayments
@@ -826,7 +898,6 @@
                     if (interval) {
                         for (let i = interval; i <= initialTenureMonths; i += interval) {
                             prepaymentsMap[i] = prepaymentAmount;
-                            totalPrepaymentAmount += prepaymentAmount;
                         }
                     }
                 }
@@ -834,179 +905,176 @@
 
             // Fallback: If no prepayments are applied, show initial schedule and hide savings
             if (Object.keys(prepaymentsMap).length === 0) {
-                calculateLoan(); // Recalculate and render the initial state
+                calculateLoan(); // Recalculate and render the initial state (already resets state)
                 return;
             }
 
+            // 2. Initial Run (Tenure Reduction Basis): Runs with initial EMI + all prepayments
+            const initialPrepaymentRun = generateAmortizationSchedule(initialPrincipal, monthlyRate, initialEMI, maxMonths, prepaymentsMap);
+            
+            if (initialPrepaymentRun.schedule.length === 0 && initialPrincipal > 0) return; // Error was shown inside schedule function
+
+            // Recalculate total prepayment amount actually made (in case loan paid off early)
+            totalPrepaymentAmount = initialPrepaymentRun.schedule.reduce((sum, item) => sum + item.prepayment, 0);
 
             let newEMI = initialEMI;
             let newResult;
             let newEmiInfoText = '';
-            let M_recalc = 9999; // Default to a very high number
+            let M_recalc = 9999; // Month index where the new EMI starts
 
-            // 2. Initial Run with Prepayments (Used for tenure reduction and baseline comparison)
-            const initialPrepaymentRun = generateAmortizationSchedule(initialPrincipal, monthlyRate, initialEMI, maxMonths, prepaymentsMap);
-            
-            if (initialPrepaymentRun.schedule.length === 0 && initialPrincipal > 0) return; // Error was shown inside schedule function
-
-            
-            // If the loan is paid off before the last potential prepayment, update the total prepayments made
-            totalPrepaymentAmount = initialPrepaymentRun.schedule.reduce((sum, item) => sum + item.prepayment, 0);
-            
-            let loanPaidInMonths = initialPrepaymentRun.totalPayments;
             
             // 3. Recalculation based on Reduction Option
             if (reductionOption === 'tenure') {
-                // If tenure is reduced, we just use the results from the initial prepayment run
+                // If tenure is reduced, we use the results from the initial prepayment run directly.
                 newResult = initialPrepaymentRun;
                 newEMI = initialEMI; // EMI stays the same
                 newEmiInfoText = `Your Monthly EMI remained at ${CURRENCY_FORMAT.format(initialEMI)}.`;
                 
             } else if (reductionOption === 'emi') {
                 
-                // --- FIX: Recalculate EMI at the point after the last prepayment (Split Amortization) ---
-                
-                // 3a. Determine Recalculation Month (M_recalc)
+                // 3a. Determine Recalculation Month (M_recalc) - Month AFTER last prepayment
                 let lastPrepaymentMonth = 0;
                 if (Object.keys(prepaymentsMap).length > 0) {
                     lastPrepaymentMonth = Math.max(...Object.keys(prepaymentsMap).map(Number));
                 }
-                // Recalculation starts the month *after* the last prepayment. 
-                M_recalc = lastPrepaymentMonth > 0 ? lastPrepaymentMonth + 1 : 1; 
+                M_recalc = lastPrepaymentMonth > 0 ? lastPrepaymentMonth + 1 : 1; 
                 
-                // 3b. Run Amortization Part 1: Initial EMI up to M_recalc - 1
-                let outstanding = initialPrincipal;
-                let totalInterest = 0;
-                let schedulePart1 = [];
-                let pRecalc = initialPrincipal; // Outstanding principal at the end of Part 1 (or start of Part 2)
+                // 3b. Determine Outstanding Principal (pRecalc)
+                const lastProcessedMonthIndex = M_recalc - 1;
+                let pRecalc = initialPrincipal; // Default to initial principal if M_recalc is 1
                 
-                for (let monthIndex = 1; monthIndex < M_recalc; monthIndex++) {
-                    if (outstanding <= 0) break;
-
-                    let interest = outstanding * monthlyRate;
-                    interest = roundToRupee(interest);
+                const lastProcessedEntry = initialPrepaymentRun.schedule.find(item => item.month === lastProcessedMonthIndex);
+                
+                if (lastProcessedEntry) {
+                    pRecalc = lastProcessedEntry.outstanding;
+                } else if (lastProcessedMonthIndex > 0 && initialPrepaymentRun.schedule.length > 0) {
+                    // This handles scenarios where the payment schedule is short (loan paid off early)
+                    pRecalc = initialPrepaymentRun.schedule[initialPrepaymentRun.schedule.length - 1].outstanding;
+                }
+                
+                // Check if loan is already paid off before the new EMI can kick in
+                if (pRecalc <= 0) {
+                    newEMI = 0;
+                    newResult = initialPrepaymentRun;
+                    const lastPaidMonth = initialPrepaymentRun.schedule.length;
+                    // FIX: Removed bolding/stars
+                    newEmiInfoText = `The loan was paid off early in month ${lastPaidMonth} even with the original EMI. New EMI is not applicable.`;
                     
-                    const prepayment = prepaymentsMap[monthIndex] || 0;
-                    let payment = initialEMI + prepayment;
+                } else {
 
-                    let principalPaid, interestPaid, outstandingEnd;
-                    
-                    if (outstanding + interest <= payment) {
-                        principalPaid = outstanding; 
-                        interestPaid = interest; 
-                        outstandingEnd = 0;
+                    // 3c. Calculate New EMI
+                    const N_remaining = initialTotalPayments - lastProcessedMonthIndex; // Remaining months based on ORIGINAL tenure
+
+                    if (N_remaining > 0) {
+                        // Calculate New EMI based on the reduced principal over the *original remaining tenure*.
+                        const rawNewEmi = calculateEMI(pRecalc, monthlyRate, N_remaining);
+                        newEMI = roundToRupee(rawNewEmi);
                     } else {
-                        interestPaid = interest;
-                        principalPaid = payment - interest;
-                        outstandingEnd = outstanding - principalPaid;
+                        newEMI = 0;
                     }
-
-                    principalPaid = roundToRupee(principalPaid);
-                    outstandingEnd = roundToRupee(outstanding - principalPaid); 
-                    if (outstandingEnd < 0) outstandingEnd = 0;
-
-                    schedulePart1.push({
-                        month: monthIndex, emi: initialEMI, prepayment: prepayment, principal: principalPaid, 
-                        interest: interestPaid, outstanding: outstandingEnd, isPrepaymentMonth: prepayment > 0,
-                    });
-
-                    totalInterest += interestPaid;
-                    outstanding = outstandingEnd;
-                    pRecalc = outstandingEnd;
-
-                    if (outstandingEnd <= 0) break;
-                }
-                
-                // 3c. Calculate New EMI
-                const N_remaining = initialTotalPayments - schedulePart1.length; // Remaining months from M_recalc onwards
-
-                if (pRecalc > 0 && N_remaining > 0) {
-                    // Calculate New EMI based on the reduced principal over the *original remaining tenure*.
-                    const rawNewEmi = calculateEMI(pRecalc, monthlyRate, N_remaining);
-                    newEMI = roundToRupee(rawNewEmi);
-                } else {
-                    newEMI = 0; // Loan paid off before or at the recalculation point
-                }
-                
-                // 3d. Run Amortization Part 2: New EMI from M_recalc onwards
-                let schedulePart2 = [];
-                outstanding = pRecalc; 
-                let currentMonthIndex = M_recalc;
-                
-                // If loan was already paid off in Part 1
-                if (outstanding > 0) { 
-                    // Use initialTotalPayments as a safe upper limit for the original tenure's length
-                    const remainingPaymentsLimit = initialTotalPayments - schedulePart1.length; 
                     
-                    for (let i = 0; i <= remainingPaymentsLimit + 12; i++) { // Add a buffer for safety
-                        if (outstanding <= 0 || currentMonthIndex > maxMonths) break;
-
-                        let interest = outstanding * monthlyRate;
-                        interest = roundToRupee(interest);
-                        
-                        // We must still process prepayments if any occur after M_recalc, but they will not trigger a *new* recalculation
-                        const prepayment = prepaymentsMap[currentMonthIndex] || 0; 
-                        let payment = newEMI + prepayment; // Use newEMI
-
-                        let principalPaid, interestPaid, outstandingEnd;
-                        
-                        if (outstanding + interest <= payment) {
-                            principalPaid = outstanding; 
-                            interestPaid = interest; 
-                            outstandingEnd = 0;
-                        } else {
-                            interestPaid = interest;
-                            principalPaid = payment - interest;
-                            outstandingEnd = outstanding - principalPaid;
+                    // 3d. Create the Final Schedule for EMI Reduction
+                    // Part 1: All payments before the new EMI starts (M_recalc - 1 month is processed)
+                    let schedulePart1 = initialPrepaymentRun.schedule.filter(item => item.month < M_recalc);
+                    
+                    // Part 2: Payments from M_recalc onwards using the NEW EMI
+                    const remainingPrepayments = {};
+                    for (const monthIndex in prepaymentsMap) {
+                        if (Number(monthIndex) >= M_recalc) {
+                            remainingPrepayments[monthIndex] = prepaymentsMap[monthIndex];
                         }
-                        
-                        principalPaid = roundToRupee(principalPaid);
-                        outstandingEnd = roundToRupee(outstanding - principalPaid); 
-                        if (outstandingEnd < 0) outstandingEnd = 0;
-
-                        schedulePart2.push({
-                            month: currentMonthIndex, emi: newEMI, prepayment: prepayment, principal: principalPaid, 
-                            interest: interestPaid, outstanding: outstandingEnd, isPrepaymentMonth: prepayment > 0,
-                        });
-                        
-                        totalInterest += interestPaid;
-                        outstanding = outstandingEnd;
-                        currentMonthIndex++;
-
-                        if (outstandingEnd <= 0) break;
                     }
-                }
+                    
+                    // The EMI reduction schedule should aim for the original term's remaining months.
+                    const maxMonthsPart2 = N_remaining;
 
-                // 3e. Combine Results
-                const combinedSchedule = [...schedulePart1, ...schedulePart2];
-                loanPaidInMonths = combinedSchedule.length;
-                
-                newResult = {
-                    schedule: combinedSchedule,
-                    totalInterest: totalInterest, // This is the sum of totalInterest from both parts
-                    totalPayments: loanPaidInMonths
-                };
+                    // Generate Part 2 starting with the new principal and new EMI
+                    const resultPart2 = generateAmortizationSchedule(pRecalc, monthlyRate, newEMI, maxMonthsPart2, remainingPrepayments);
+                    
+                    // Correct the month index in Part 2's schedule
+                    const schedulePart2 = resultPart2.schedule.map(item => ({
+                        ...item,
+                        month: item.month + lastProcessedMonthIndex,
+                        // Update the EMI value in the item for the renderer to display the new EMI correctly
+                        emi: newEMI 
+                    }));
 
-                // Final info text with Month and Year (FIX 3)
-                if (newEMI > 0) {
-                    const recalcDateDisplay = getDateForMonth(M_recalc, loanStartDateString);
-                    newEmiInfoText = `Your new Monthly EMI will be **${CURRENCY_FORMAT.format(newEMI)}** starting from **${recalcDateDisplay}** (Month **${M_recalc}**) of the loan.`;
-                } else {
-                    newEmiInfoText = `The loan was paid off early in month **${schedulePart1.length}** even with the original EMI.`;
+                    // 3e. Combine Results
+                    let combinedSchedule = [...schedulePart1, ...schedulePart2];
+                    
+                    // FIX: Ensure the combined schedule runs up to the original term (initialTotalPayments)
+                    // This is key for the EMI reduction duration to match the original loan term.
+                    const finalMonthOfOriginalLoan = initialTotalPayments;
+                    let lastMonthInCombined = combinedSchedule.length;
+                    
+                    // Append zero-payment rows if loan paid off early but option is EMI reduction
+                    while (lastMonthInCombined < finalMonthOfOriginalLoan) {
+                        lastMonthInCombined++;
+                        // Add zero-balance rows until the original end date is reached
+                        combinedSchedule.push({
+                            month: lastMonthInCombined, 
+                            emi: newEMI, // The EMI rate is technically still active but payments are zero
+                            prepayment: 0, 
+                            principal: 0, 
+                            interest: 0, 
+                            outstanding: 0, 
+                            isPrepaymentMonth: false,
+                        });
+                    }
+
+                    // Recalculate total interest from combined schedule (Part 1 + Part 2)
+                    const combinedTotalInterest = combinedSchedule.reduce((sum, item) => sum + item.interest, 0);
+
+
+                    newResult = {
+                        schedule: combinedSchedule,
+                        totalInterest: combinedTotalInterest, 
+                        totalPayments: combinedSchedule.length // Use the enforced length
+                    };
+
+                    // Final info text with Month and Year
+                    if (newEMI > 0) {
+                        const recalcDateDisplay = getDateForMonth(M_recalc, loanStartDateString);
+                        // FIX: Removed bolding/stars and month index from the main message
+                        newEmiInfoText = `Your new Monthly EMI will be ${CURRENCY_FORMAT.format(newEMI)} starting from ${recalcDateDisplay} of the loan.`;
+                        
+                        // Indicate if the loan was still technically paid off early (before the original end date)
+                        if (resultPart2.schedule.length < maxMonthsPart2) {
+                            const actualPaidOffMonth = schedulePart1.length + resultPart2.schedule.length;
+                            // FIX: Removed bolding/stars
+                            newEmiInfoText += ` Note: The loan was physically paid off early in month ${actualPaidOffMonth}. EMI payments stop then.`;
+                        }
+                    } else {
+                        // FIX: Removed bolding/stars
+                        newEmiInfoText = `The loan was paid off early in month ${schedulePart1.length} even with the original EMI.`;
+                    }
                 }
 
             } // End of reductionOption === 'emi'
 
             // 4. Calculate Final Savings
-            // Recalculate total interest from the new result's schedule, especially for the EMI reduction case
-            const newTotalInterest = newResult.schedule.reduce((sum, item) => sum + item.interest, 0);
+            // Use the calculated total interest from the new result (which includes Part 1 + Part 2 where applicable)
+            const newTotalInterest = newResult.totalInterest;
             const interestSaved = initialTotalInterest - newTotalInterest;
-            const tenureReductionMonths = initialTotalPayments - newResult.totalPayments;
+            
+            // Calculate tenure reduction based on actual payment count (only count months with actual payments)
+            const actualPaymentCount = newResult.schedule.filter(item => item.principal > 0 || item.interest > 0 || item.prepayment > 0).length;
+            
+            // For the EMI reduction option, we show the original duration, but the reduction based on actual payments
+            const totalPaymentsToDisplay = reductionOption === 'emi' ? initialTotalPayments : newResult.totalPayments;
+            
+            const tenureReductionMonths = initialTotalPayments - actualPaymentCount;
 
             // 5. Display Savings Summary
             document.getElementById('saved-interest-output').textContent = CURRENCY_FORMAT.format(interestSaved);
-            document.getElementById('new-duration-output').textContent = `${Math.floor(newResult.totalPayments / 12)}Y ${newResult.totalPayments % 12}M (${newResult.totalPayments} Months)`;
-            document.getElementById('tenure-reduction-output').textContent = `${Math.floor(tenureReductionMonths / 12)}Y ${tenureReductionMonths % 12}M`;
+            document.getElementById('new-duration-output').textContent = `${Math.floor(totalPaymentsToDisplay / 12)}Y ${totalPaymentsToDisplay % 12}M (${totalPaymentsToDisplay} Months)`;
+            
+            // For 'emi' reduction, display the number of months cut from the full term.
+            const tenureReductionText = reductionOption === 'emi' ? 
+                `${Math.floor(tenureReductionMonths / 12)}Y ${tenureReductionMonths % 12}M (EMI Reduction Goal)` :
+                `${Math.floor(tenureReductionMonths / 12)}Y ${tenureReductionMonths % 12}M`;
+
+            document.getElementById('tenure-reduction-output').textContent = tenureReductionText;
             
             newEmiInfoText += ` Total Prepayment made: ${CURRENCY_FORMAT.format(totalPrepaymentAmount)}.`;
             document.getElementById('new-emi-info').innerHTML = newEmiInfoText;
@@ -1034,20 +1102,36 @@
             schedule.forEach(item => {
                 const row = tbody.insertRow();
                 
-                // Determine the EMI to display for this row (use new EMI from the recalc month onwards)
-                let displayEMI = item.month < recalcMonth ? initialEMIValue : currentEMI;
+                // Determine the EMI to display for this row
+                let displayEMI = item.emi;
                 
-                // If the item's EMI (from the calculation) is 0, display 0 for the paid-off month
-                if (item.principal === 0 && item.interest === 0 && item.outstanding === 0) {
-                     displayEMI = 0;
+                // Determine actual total payment for last month
+                if (item.outstanding <= 0 && item.month === schedule.length) {
+                     // Last residual payment
+                     displayEMI = item.principal + item.interest + item.prepayment;
+                } else if (item.outstanding <= 0 && item.month < schedule.length) {
+                    // Loan paid off early, remaining rows should show 0 payment if it's past the last actual payment month
+                    displayEMI = 0;
+                } else if (item.month >= recalcMonth) {
+                    // Use the new EMI for all rows from the recalc month onwards if the loan is still active
+                    displayEMI = currentEMI;
+                } else {
+                    // Use the initial EMI before the recalc month
+                    displayEMI = initialEMIValue;
                 }
                 
                 // Format for EMI change indication
                 const emiFormat = (value) => {
                     const formatted = CURRENCY_FORMAT.format(value);
-                    // Check if the current month is the month where the new EMI starts
-                    if (item.month >= recalcMonth && Math.abs(value - initialEMIValue) > 1) {
-                        return `<span class="font-bold text-red-600">${formatted} (New)</span>`;
+                    // Check if the current month is the month where the new EMI starts AND EMI has changed substantially
+                    if (item.month >= recalcMonth && Math.abs(currentEMI - initialEMIValue) > 1 && value > 0) {
+                        // Check if this month is the start of the new EMI and the new EMI is different from the original EMI
+                        if (item.month === recalcMonth) {
+                             return `<span class="font-bold text-red-600">${formatted} (New)</span>`;
+                        } else if (item.month > recalcMonth) {
+                             // Use the new EMI text color for all subsequent payments if EMI has changed
+                             return `<span class="font-bold text-red-600">${formatted}</span>`;
+                        }
                     }
                     return formatted;
                 };
@@ -1125,6 +1209,9 @@
             // Set the default date for Custom Prepayment to match Loan Start Month default
             document.getElementById('custom-payment-month').value = document.getElementById('start-month').value;
             document.getElementById('custom-payment-year').value = document.getElementById('start-year').value;
+
+            // Initialize prepayment options based on default reduction selection
+            updatePrepaymentOptions();
         }
         
         // Add styling for input fields and table cells using JavaScript (as Tailwind classes cannot be used in `style` block for components)
