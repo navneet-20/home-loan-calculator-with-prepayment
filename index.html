@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advance Home Loan Calculator with Prepayment (Saving Analyzer)</title>
+    <!-- SEO Metadata -->
+    <meta name="description" content="Advanced home loan EMI calculator and saving analyzer. Calculate monthly payments, analyze prepayments, and see interest savings when reducing tenure or EMI.">
+    <meta name="keywords" content="Home Loan Calculator, Advance Home Loan Calculator, Home Loan Calculator with Prepayment, Home Loan Tax Saving Calculator, EMI Calculator, Loan Amortization Schedule, Loan Repayment Analyzer, Prepayment Savings, Reduce Loan Tenure, Reduce Monthly EMI, financial calculator, India loan calculator">
+    <meta name="author" content="Loan Analyzer App">
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font family -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+        /* Increased responsiveness for the table container */
+        .scrollable-table {
+            max-height: 500px;
+            overflow-x: auto; /* Allows horizontal scrolling for the wide table on small screens */
+            overflow-y: auto;
+        }
+        /* Fixed width for table content on mobile to prevent stretching */
+        .min-w-full {
+             min-width: 800px; /* Ensure table columns have space, allowing container to scroll */
+        }
+        /* Custom Tailwind class for input group */
+        .input-group {
+            @apply flex rounded-lg shadow-sm;
+        }
+        .input-unit {
+            @apply inline-flex items-center px-3 text-sm text-gray-500 bg-gray-50 border border-l-0 border-gray-300 rounded-r-lg;
+        }
+        .input-field-group {
+            /* Applied to the input inside the group, rounded-l-lg */
+            @apply w-full p-3 border border-gray-300 rounded-l-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white shadow-2xl rounded-xl p-6 lg:p-10 border border-gray-100">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-blue-800 mb-6 text-center">
+            Advance Home Loan Calculator with Prepayment (Saving Analyzer)
+        </h1>
+
+        <!-- Input Section -->
+        <!-- Adjusted grid for better mobile stacking (4 columns on large screens, 2 on medium, 1 on small) -->
+        <div id="input-section" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 p-4 border border-blue-200 rounded-lg bg-blue-50">
+            <div class="col-span-full text-lg font-semibold text-blue-700 mb-2">Loan Details (Up to 25 Years)</div>
+
+            <!-- Principal Input Group -->
+            <div class="flex flex-col">
+                <label for="principal" class="text-sm font-medium text-gray-700 mb-1">Total Principal</label>
+                <div class="input-group">
+                    <input type="number" id="principal" placeholder="50,00,000" value="5000000" class="input-field-group border-r-0" required min="1000">
+                    <span class="input-unit border-l-0">₹</span>
+                </div>
+            </div>
+
+            <!-- Interest Rate Input Group -->
+            <div class="flex flex-col">
+                <label for="rate" class="text-sm font-medium text-gray-700 mb-1">Interest Rate</label>
+                <div class="input-group">
+                    <input type="number" id="rate" placeholder="8.5" value="8.5" step="0.01" class="input-field-group border-r-0" required min="0.1" max="50">
+                    <span class="input-unit border-l-0">%</span>
+                </div>
+            </div>
+            
+            <!-- Tenure Input Group -->
+            <div class="flex flex-col">
+                <label for="tenure" class="text-sm font-medium text-gray-700 mb-1">Loan Tenure</label>
+                <div class="input-group">
+                    <input type="number" id="tenure" placeholder="20" value="20" class="input-field-group border-r-0" required min="1" max="25">
+                    <span class="input-unit border-l-0">Years</span>
+                </div>
+            </div>
+            
+            <!-- START MONTH INPUT with improved label -->
+            <div class="flex flex-col">
+                <label for="start-month" class="text-sm font-medium text-gray-700 mb-1">Loan Start Month</label>
+                <!-- Changed to use input-field class -->
+                <input type="month" id="start-month" class="input-field" required>
+            </div>
+            <!-- END START MONTH INPUT -->
+
+            <button onclick="calculateLoan()" id="calculate-btn" class="col-span-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200 shadow-md">
+                Proceed
+            </button>
+        </div>
+
+        <!-- Results Summary Section -->
+        <!-- Ensure summary cards stack nicely on mobile -->
+        <div id="summary-section" class="hidden mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Initial EMI -->
+            <div class="summary-card bg-indigo-50 border-indigo-300">
+                <p class="text-sm font-medium text-indigo-700">Initial Monthly EMI</p>
+                <p id="initial-emi-output" class="text-2xl font-bold text-indigo-900"></p>
+            </div>
+            <!-- Total Interest Payable -->
+            <div class="summary-card bg-red-50 border-red-300">
+                <p class="text-sm font-medium text-red-700">Total Interest Payable</p>
+                <p id="initial-interest-output" class="text-2xl font-bold text-red-900"></p>
+            </div>
+            <!-- Total Loan Duration -->
+            <div class="summary-card bg-gray-50 border-gray-300">
+                <p class="text-sm font-medium text-gray-700">Original Duration</p>
+                <p id="original-duration-output" class="text-2xl font-bold text-gray-900"></p>
+            </div>
+        </div>
+
+        <!-- Prepayment Section -->
+        <div id="prepayment-container" class="hidden p-6 border border-green-300 rounded-lg bg-green-50 mb-8">
+            <h2 class="text-2xl font-semibold text-green-800 mb-4">Add Prepayments</h2>
+
+            <!-- Ensure prepayment controls stack on small screens -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- Prepayment Frequency (Numbering removed) -->
+                <div>
+                    <label for="prepayment-type" class="block text-sm font-medium text-gray-700 mb-1">Prepayment Frequency</label>
+                    <select id="prepayment-type" onchange="updatePrepaymentInputs()" class="input-field">
+                        <option value="none">No Prepayment</option>
+                        <option value="monthly">Monthly (Regular)</option>
+                        <option value="quarterly">Quarterly (Regular)</option>
+                        <option value="six-monthly">Six-Monthly (Regular)</option>
+                        <option value="yearly">Yearly (Regular)</option>
+                        <option value="one-time">One Time Lump Sum</option>
+                        <option value="custom">On Particular Months (Custom Schedule)</option>
+                    </select>
+                </div>
+
+                <!-- Prepayment Amount (for regular and one-time) -->
+                <div id="prepayment-amount-div">
+                    <label for="prepayment-amount" class="block text-sm font-medium text-gray-700 mb-1">Prepayment Amount (in addition to EMI)</label>
+                    <input type="number" id="prepayment-amount" placeholder="Amount (e.g., 50000)" class="input-field" min="0" value="0">
+                </div>
+
+                <!-- Custom Month Input (NEW Dynamic UI) -->
+                <div id="custom-months-div" class="col-span-1 md:col-span-2 hidden p-4 border border-green-200 rounded-lg bg-green-100">
+                    <label class="block text-sm font-medium text-green-800 mb-2">Custom Prepayment Entry</label>
+                    
+                    <!-- Ensure custom input grid wraps nicely on small screens -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <input type="month" id="custom-payment-date" class="input-field col-span-1" required>
+                        <input type="number" id="custom-payment-amount" placeholder="Amount (e.g., 50000)" class="input-field col-span-1" min="1" required>
+                        <button onclick="addCustomPayment()" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded-lg transition duration-200 col-span-1">
+                            Add Payment
+                        </button>
+                    </div>
+
+                    <div class="mt-4">
+                        <p class="text-sm font-medium text-gray-700 mb-2">Current Custom Payments:</p>
+                        <div id="custom-payments-list" class="max-h-32 overflow-y-auto space-y-2">
+                            <!-- Payments will be listed here -->
+                            <p id="custom-payments-placeholder" class="text-gray-500 text-sm italic">No custom payments added yet. Please calculate the loan first.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reduction Option (Numbering removed) -->
+            <div class="mb-6">
+                <label for="reduction-option" class="block text-sm font-medium text-gray-700 mb-1">After Prepayment, Reduce:</label>
+                <select id="reduction-option" class="input-field">
+                    <option value="tenure">Loan Tenure (Recommended for max savings)</option>
+                    <option value="emi">Monthly EMI</option>
+                </select>
+            </div>
+
+            <button onclick="applyPrepayments()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition duration-200 shadow-lg">
+                Apply Prepayments & See Savings
+            </button>
+        </div>
+
+        <!-- Savings Summary Section -->
+        <!-- Ensure savings summary stacks nicely on mobile -->
+        <div id="savings-summary" class="hidden mb-8 p-6 border-l-4 border-yellow-500 bg-yellow-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-semibold text-yellow-800 mb-4">💰 Prepayment Savings Analysis</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <p class="text-sm font-medium text-yellow-700">Total Interest Saved</p>
+                    <p id="saved-interest-output" class="text-2xl font-bold text-yellow-900"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-yellow-700">New Loan Duration</p>
+                    <p id="new-duration-output" class="text-2xl font-bold text-yellow-900"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-yellow-700">Reduction in Tenure</p>
+                    <p id="tenure-reduction-output" class="text-2xl font-bold text-yellow-900"></p>
+                </div>
+            </div>
+            <p id="new-emi-info" class="mt-4 text-md font-medium text-yellow-800"></p>
+        </div>
+
+        <!-- Schedule Section -->
+        <div id="schedule-section" class="hidden mt-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Monthly Loan Repayment Schedule</h2>
+            <div class="scrollable-table shadow-lg rounded-lg">
+                <!-- Added min-w-full class to force the table to be wide enough to be scrollable -->
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="table-header">Month</th>
+                            <th class="table-header">Date</th>
+                            <th class="table-header">EMI</th>
+                            <th class="table-header">Prepayment</th>
+                            <th class="table-header">Towards Principal</th>
+                            <th class="table-header">Towards Interest</th>
+                            <th class="table-header">Outstanding Principal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-body" class="bg-white divide-y divide-gray-200 text-sm">
+                        <!-- Schedule rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Alert/Error Message Box -->
+        <div id="message-box" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden" onclick="hideMessage()">
+            <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full" onclick="event.stopPropagation()">
+                <h3 id="message-title" class="text-xl font-bold mb-3 text-red-600">Error</h3>
+                <p id="message-text" class="text-gray-700 mb-4">An error occurred.</p>
+                <button onclick="hideMessage()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition duration-200">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for configuration and state
+        let initialPrincipal = 0;
+        let initialRate = 0; // Annual rate percentage
+        let initialTenureMonths = 0;
+        let initialEMI = 0;
+        let initialTotalInterest = 0;
+        let initialTotalPayments = 0;
+        let loanStartDateString = ''; // YYYY-MM string for the loan start date
+        
+        // Storage for custom prepayments: Array of { monthIndex: number, date: string, amount: number }
+        let customPayments = []; 
+
+        // Currency format set to minimumFractionDigits: 0 (nearest Rupee)
+        const CURRENCY_FORMAT = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 });
+
+        /**
+         * Helper function to round monetary values to the nearest whole number (Rupee).
+         * This is used in calculations to prevent floating-point errors and keep numbers clean.
+         * @param {number} num - The number to round.
+         * @returns {number} The rounded number.
+         */
+        const roundToRupee = (num) => Math.round(num);
+
+
+        // --- Utility Functions ---
+
+        /**
+         * Custom alert box replacement.
+         * @param {string} title - Title of the message box.
+         * @param {string} message - Content of the message.
+         * @param {string} type - 'success', 'error', 'warning' for styling.
+         */
+        function showMessage(title, message, type = 'error') {
+            const box = document.getElementById('message-box');
+            const titleEl = document.getElementById('message-title');
+            const textEl = document.getElementById('message-text');
+            const buttonEl = box.querySelector('button');
+
+            titleEl.textContent = title;
+            textEl.textContent = message;
+
+            // Apply colors based on type
+            let titleColor = 'text-red-600';
+            let buttonColor = 'bg-red-500 hover:bg-red-600';
+
+            if (type === 'success') {
+                titleColor = 'text-green-600';
+                buttonColor = 'bg-green-500 hover:bg-green-600';
+            } else if (type === 'warning') {
+                titleColor = 'text-yellow-600';
+                buttonColor = 'bg-yellow-500 hover:bg-yellow-600';
+            }
+
+            titleEl.className = `text-xl font-bold mb-3 ${titleColor}`;
+            buttonEl.className = `w-full ${buttonColor} text-white font-bold py-2 rounded-lg transition duration-200`;
+            
+            box.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            document.getElementById('message-box').classList.add('hidden');
+        }
+
+        /**
+         * Calculates the EMI for a loan.
+         * @param {number} P - Principal loan amount.
+         * @param {number} r - Monthly interest rate (decimal).
+         * @param {number} n - Total number of months.
+         * @returns {number} The monthly EMI amount.
+         */
+        function calculateEMI(P, r, n) {
+            if (r === 0) {
+                return P / n;
+            }
+            // EMI = P * [r * (1 + r)^n] / [(1 + r)^n - 1]
+            return P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+        }
+
+        /**
+         * Converts a prepayment date (YYYY-MM) into a 1-based month index relative to the loan start date.
+         * @param {string} prepaymentDateString - YYYY-MM string of the prepayment.
+         * @param {string} loanStartDateString - YYYY-MM string of the loan start.
+         * @returns {number} The 1-based month index (e.g., 1 for the first payment month).
+         */
+        function getMonthIndexFromDate(prepaymentDateString, loanStartDateString) {
+            const [pYear, pMonth] = prepaymentDateString.split('-').map(Number);
+            const [sYear, sMonth] = loanStartDateString.split('-').map(Number);
+            
+            // Months elapsed since loan start (0-based)
+            const monthsElapsed = (pYear - sYear) * 12 + (pMonth - sMonth);
+            
+            // Month index is 1-based
+            return monthsElapsed + 1;
+        }
+
+        /**
+         * Gets the date for a given month index in the loan.
+         * @param {number} monthIndex - 1-based index (1 for the first payment).
+         * @param {string} startDateString - YYYY-MM string from the input.
+         * @returns {string} Formatted date string (e.g., "Oct 2025").
+         */
+        function getDateForMonth(monthIndex, startDateString) {
+            const [yearStr, monthStr] = startDateString.split('-');
+            let startYear = parseInt(yearStr);
+            let startMonth = parseInt(monthStr); // 1-12
+
+            // Calculate the target month and year
+            let targetMonth = startMonth + monthIndex - 1;
+            let targetYear = startYear + Math.floor((targetMonth - 1) / 12);
+            targetMonth = ((targetMonth - 1) % 12) + 1; // Normalize to 1-12
+
+            const date = new Date(targetYear, targetMonth - 1);
+            return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        }
+
+        // --- Core Calculation Logic ---
+
+        /**
+         * Generates the amortization schedule up to a maximum number of payments (months).
+         * This is the heart of the calculator.
+         * @param {number} principal - Starting principal.
+         * @param {number} monthlyRate - Monthly interest rate (decimal).
+         * @param {number} emi - The fixed monthly payment amount (already rounded).
+         * @param {number} maxMonths - Max number of months to calculate.
+         * @param {Object<number, number>} prepayments - Map of {monthIndex: amount}.
+         * @returns {{schedule: Array, totalInterest: number, totalPayments: number}}
+         */
+        function generateAmortizationSchedule(principal, monthlyRate, emi, maxMonths, prepayments = {}) {
+            let outstanding = principal;
+            let totalInterest = 0;
+            let totalPayments = 0;
+            let schedule = [];
+
+            for (let monthIndex = 1; monthIndex <= maxMonths; monthIndex++) {
+                if (outstanding <= 0) break;
+
+                // 1. Calculate Interest for the month and round it to the nearest rupee
+                let interest = outstanding * monthlyRate;
+                interest = roundToRupee(interest);
+
+                // 2. Determine Prepayment amount
+                const prepayment = prepayments[monthIndex] || 0;
+
+                // 3. Determine total payment (EMI + Prepayment)
+                let payment = emi + prepayment;
+
+                // If remaining outstanding is less than (EMI + interest), final payment is capped
+                if (outstanding + interest <= payment) {
+                    payment = outstanding + interest;
+                    var principalPaid = outstanding; 
+                    var interestPaid = interest; 
+                    var outstandingEnd = 0;
+                } else {
+                    var interestPaid = interest;
+                    var principalPaid = payment - interest;
+                    var outstandingEnd = outstanding - principalPaid;
+                }
+                
+                // If principalPaid becomes negative, adjust for safety (shouldn't happen with correct EMI)
+                if (principalPaid < 0) {
+                    principalPaid = 0;
+                    outstandingEnd = outstanding;
+                    if (emi < interest) {
+                        showMessage('Loan Calculation Error', `The calculated EMI (${CURRENCY_FORMAT.format(emi)}) is less than the current month's interest (${CURRENCY_FORMAT.format(interest)}). Please check your Rate or Principal.`);
+                        return { schedule: [], totalInterest: 0, totalPayments: 0 };
+                    }
+                }
+
+                // Final rounding of the monthly principal and new outstanding balance
+                principalPaid = roundToRupee(principalPaid);
+                // Ensure outstanding end calculation uses the rounded principal paid
+                outstandingEnd = roundToRupee(outstanding - principalPaid); 
+                
+                // Handle the case where the rounding caused a slight overshoot/undershoot on the final payment
+                if (outstandingEnd < 0) outstandingEnd = 0;
+
+
+                schedule.push({
+                    month: monthIndex,
+                    emi: emi,
+                    prepayment: prepayment,
+                    principal: principalPaid,
+                    interest: interestPaid,
+                    outstanding: outstandingEnd,
+                    isPrepaymentMonth: prepayment > 0,
+                });
+
+                totalInterest += interestPaid;
+                totalPayments = monthIndex;
+                outstanding = outstandingEnd;
+
+                // If the loan is paid off, stop.
+                if (outstandingEnd <= 0) break;
+            }
+
+            // Round final total interest for cleaner output
+            totalInterest = roundToRupee(totalInterest);
+
+            return { schedule, totalInterest, totalPayments };
+        }
+
+        // --- UI Event Handlers (Prepayment) ---
+
+        function updatePrepaymentInputs() {
+            const type = document.getElementById('prepayment-type').value;
+            const amountDiv = document.getElementById('prepayment-amount-div');
+            const customDiv = document.getElementById('custom-months-div');
+
+            // Hide/Show controls based on type
+            const isRegularOrOneTime = (type !== 'custom' && type !== 'none');
+            const isOneTime = (type === 'one-time');
+            
+            amountDiv.classList.toggle('hidden', !isRegularOrOneTime);
+            customDiv.classList.toggle('hidden', type !== 'custom');
+
+            // Handle One-Time specific input
+            let monthInput = document.getElementById('one-time-month-input');
+            if (isOneTime) {
+                amountDiv.querySelector('label').textContent = 'One-Time Lump Sum Amount';
+                if (!monthInput) {
+                    monthInput = document.createElement('input');
+                    monthInput.type = 'number';
+                    monthInput.id = 'one-time-month-input';
+                    monthInput.placeholder = 'Month Index (e.g., 12)';
+                    monthInput.className = 'input-field mt-2';
+                    monthInput.min = '1';
+                    amountDiv.appendChild(monthInput);
+                }
+            } else {
+                amountDiv.querySelector('label').textContent = 'Prepayment Amount (in addition to EMI)';
+                if (monthInput) {
+                    monthInput.remove();
+                }
+            }
+        }
+
+        /**
+         * Adds a custom prepayment (date + amount) to the global list.
+         */
+        function addCustomPayment() {
+            const prepaymentDate = document.getElementById('custom-payment-date').value;
+            const prepaymentAmount = parseFloat(document.getElementById('custom-payment-amount').value);
+            
+            if (!loanStartDateString) {
+                showMessage('Error', 'Please calculate the initial loan first to set the loan start date.');
+                return;
+            }
+
+            if (!prepaymentDate || !prepaymentAmount || prepaymentAmount <= 0 || isNaN(prepaymentAmount)) {
+                showMessage('Missing Data', 'Please select a Month/Year and enter a valid positive Amount.');
+                return;
+            }
+            
+            const monthIndex = getMonthIndexFromDate(prepaymentDate, loanStartDateString);
+            
+            if (monthIndex < 1) {
+                showMessage('Date Error', 'The prepayment date must be in or after the loan start month (' + getDateForMonth(1, loanStartDateString) + ').');
+                return;
+            }
+            
+            // Max month index is based on 25 years (300 months)
+            if (monthIndex > 300) {
+                 showMessage('Date Warning', 'The selected month is beyond the maximum 25-year tenure (300 months) typically supported. It will be ignored if the loan is paid off before then.', 'warning');
+            }
+
+
+            // Add or merge the payment
+            const existingPaymentIndex = customPayments.findIndex(p => p.monthIndex === monthIndex);
+
+            if (existingPaymentIndex !== -1) {
+                customPayments[existingPaymentIndex].amount += roundToRupee(prepaymentAmount); // Round input on merge
+            } else {
+                customPayments.push({
+                    monthIndex: monthIndex,
+                    date: prepaymentDate,
+                    amount: roundToRupee(prepaymentAmount), // Round input on creation
+                });
+                // Sort by month index to ensure easy review
+                customPayments.sort((a, b) => a.monthIndex - b.monthIndex);
+            }
+            
+            // Clear inputs and refresh list
+            document.getElementById('custom-payment-date').value = loanStartDateString; // Reset to loan start month or a reasonable default
+            document.getElementById('custom-payment-amount').value = '';
+            renderCustomPaymentsList();
+        }
+
+        /**
+         * Removes a custom prepayment from the list.
+         * @param {number} monthIndex - The 1-based month index of the payment to remove.
+         */
+        function removeCustomPayment(monthIndex) {
+            customPayments = customPayments.filter(p => p.monthIndex !== monthIndex);
+            renderCustomPaymentsList();
+        }
+
+        /**
+         * Renders the list of custom payments in the UI.
+         */
+        function renderCustomPaymentsList() {
+            const listEl = document.getElementById('custom-payments-list');
+            listEl.innerHTML = '';
+
+            if (customPayments.length === 0) {
+                listEl.innerHTML = '<p id="custom-payments-placeholder" class="text-gray-500 text-sm italic">No custom payments added yet.</p>';
+                return;
+            }
+
+            customPayments.forEach(p => {
+                const dateDisplay = getDateForMonth(p.monthIndex, loanStartDateString);
+
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-2 bg-white rounded-md shadow-sm border border-gray-200';
+                item.innerHTML = `
+                    <span class="text-sm font-medium text-gray-800">${dateDisplay} (Month ${p.monthIndex}):</span>
+                    <span class="text-sm font-bold text-green-700">${CURRENCY_FORMAT.format(p.amount)}</span>
+                    <button onclick="removeCustomPayment(${p.monthIndex})" class="text-red-500 hover:text-red-700 transition duration-150 p-1 rounded-full hover:bg-red-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+
+        /**
+         * Primary function to calculate the initial loan and display the schedule.
+         */
+        function calculateLoan() {
+            const principal = parseFloat(document.getElementById('principal').value);
+            const ratePercent = parseFloat(document.getElementById('rate').value);
+            const tenureYears = parseFloat(document.getElementById('tenure').value);
+            const startDateString = document.getElementById('start-month').value;
+
+            // Input Validation
+            if (!principal || !ratePercent || !tenureYears || !startDateString) {
+                showMessage('Missing Information', 'Please fill in the Principal, Interest Rate, Tenure, and Loan Start Month.');
+                return;
+            }
+            if (tenureYears > 25) {
+                showMessage('Maximum Tenure Exceeded', 'The maximum supported loan tenure is 25 years.');
+                return;
+            }
+
+            const monthlyRate = (ratePercent / 100) / 12;
+            const tenureMonths = Math.round(tenureYears * 12);
+            const maxMonths = 300 * 3; // Max 25 years * 12 months * a factor of 3 to allow for reduction in tenure
+            
+            // Store initial values globally
+            initialPrincipal = principal;
+            initialRate = ratePercent;
+            initialTenureMonths = tenureMonths;
+            loanStartDateString = startDateString; // Store the start date
+
+            // Calculate Initial EMI and round it to the nearest Rupee
+            const rawEmi = calculateEMI(principal, monthlyRate, tenureMonths);
+            const emi = roundToRupee(rawEmi);
+            initialEMI = emi;
+
+            // Generate the baseline schedule (without prepayments)
+            const result = generateAmortizationSchedule(principal, monthlyRate, emi, maxMonths);
+            
+            // Check for calculation errors
+            if (result.schedule.length === 0 && principal > 0) return; 
+
+            initialTotalInterest = result.totalInterest;
+            initialTotalPayments = result.totalPayments;
+
+            // Display Summary
+            document.getElementById('initial-emi-output').textContent = CURRENCY_FORMAT.format(emi);
+            document.getElementById('initial-interest-output').textContent = CURRENCY_FORMAT.format(initialTotalInterest);
+            document.getElementById('original-duration-output').textContent = `${tenureYears} Years (${initialTotalPayments} Months)`;
+            
+            document.getElementById('summary-section').classList.remove('hidden');
+            document.getElementById('prepayment-container').classList.remove('hidden');
+            document.getElementById('schedule-section').classList.remove('hidden');
+            document.getElementById('savings-summary').classList.add('hidden'); // Hide savings initially
+            
+            // Render the initial schedule
+            renderSchedule(result.schedule, startDateString);
+
+            // Update custom payment list placeholder after loan is calculated
+            if (customPayments.length === 0) {
+                 document.getElementById('custom-payments-placeholder').textContent = 'No custom payments added yet.';
+            }
+
+            // Set default for custom month picker to the start month
+            document.getElementById('custom-payment-date').value = startDateString;
+        }
+
+        /**
+         * Handles the prepayment input, recalculates the loan, and updates the display.
+         */
+        function applyPrepayments() {
+            const monthlyRate = (initialRate / 100) / 12;
+            const prepaymentType = document.getElementById('prepayment-type').value;
+            const reductionOption = document.getElementById('reduction-option').value;
+            const startDateString = document.getElementById('start-month').value;
+
+            // 1. Parse Prepayments Map
+            let prepaymentsMap = {};
+            let prepaymentAmount = 0;
+            let totalPrepaymentAmount = 0;
+
+            if (prepaymentType === 'custom') {
+                if (customPayments.length === 0) {
+                     showMessage('Prepayment Error', 'Please add custom prepayments using the date and amount fields above.');
+                     return;
+                }
+                customPayments.forEach(p => {
+                    prepaymentsMap[p.monthIndex] = (prepaymentsMap[p.monthIndex] || 0) + p.amount;
+                    totalPrepaymentAmount += p.amount;
+                });
+            } else if (prepaymentType !== 'none') {
+                prepaymentAmount = parseFloat(document.getElementById('prepayment-amount').value);
+                
+                if (prepaymentAmount <= 0 || isNaN(prepaymentAmount)) {
+                    showMessage('Prepayment Error', `Please enter a valid positive amount for ${prepaymentType} prepayment.`);
+                    return;
+                }
+                // Round input amount before using it for calculation
+                prepaymentAmount = roundToRupee(prepaymentAmount);
+
+                if (prepaymentType === 'one-time') {
+                    const oneTimeMonth = parseInt(document.getElementById('one-time-month-input')?.value);
+                    if (!oneTimeMonth || isNaN(oneTimeMonth) || oneTimeMonth < 1) {
+                         showMessage('Prepayment Error', 'Please enter a valid month index for the one-time payment.');
+                         return;
+                    }
+                    prepaymentsMap[oneTimeMonth] = prepaymentAmount;
+                    totalPrepaymentAmount = prepaymentAmount;
+
+                } else {
+                    // Regular prepayments
+                    const interval = {
+                        'monthly': 1,
+                        'quarterly': 3,
+                        'six-monthly': 6,
+                        'yearly': 12
+                    }[prepaymentType];
+                    
+                    if (interval) {
+                        for (let i = interval; i <= initialTenureMonths; i += interval) {
+                            prepaymentsMap[i] = prepaymentAmount;
+                            totalPrepaymentAmount += prepaymentAmount;
+                        }
+                    }
+                }
+            }
+
+            // Fallback: If no prepayments are applied, show initial schedule and hide savings
+            if (Object.keys(prepaymentsMap).length === 0) {
+                calculateLoan(); // Recalculate and render the initial state
+                return;
+            }
+
+
+            let newEMI = initialEMI;
+            let maxMonths = initialTenureMonths * 12 * 3; // Allow large buffer for safety
+            let newResult;
+
+            // 2. Initial Run with Prepayments (To find when the loan pays off and total payments)
+            const initialPrepaymentRun = generateAmortizationSchedule(initialPrincipal, monthlyRate, initialEMI, maxMonths, prepaymentsMap);
+            
+            if (initialPrepaymentRun.schedule.length === 0 && initialPrincipal > 0) return; // Error was shown inside schedule function
+
+            
+            // If the loan is paid off before the last potential prepayment, update the total prepayments made
+            totalPrepaymentAmount = initialPrepaymentRun.schedule.reduce((sum, item) => sum + item.prepayment, 0);
+            
+            let loanPaidInMonths = initialPrepaymentRun.totalPayments;
+            
+            // 3. Recalculation based on Reduction Option
+            if (reductionOption === 'tenure') {
+                // If tenure is reduced, we just use the results from the initial prepayment run
+                newResult = initialPrepaymentRun;
+                newEMI = initialEMI; // EMI stays the same
+
+            } else if (reductionOption === 'emi') {
+                // Reduce EMI: This is complex. We must re-run the calculation *up to* the first payment post-prepayment 
+                // to find the remaining principal, then calculate the new EMI.
+
+                // Find the index of the last month that was paid (EMI_RECALC_MONTH)
+                let outstandingAtRecalcMonth = initialPrincipal;
+                
+                // Recalculate the schedule up to the last month of the initial term or paid month
+                for (let i = 1; i <= initialTenureMonths; i++) {
+                    let interest = outstandingAtRecalcMonth * monthlyRate;
+                    interest = roundToRupee(interest); // Apply rounding
+                    
+                    const prepayment = prepaymentsMap[i] || 0;
+                    let payment = initialEMI + prepayment;
+
+                    if (outstandingAtRecalcMonth + interest <= payment) {
+                        // Loan is paid off early
+                        outstandingAtRecalcMonth = 0;
+                        loanPaidInMonths = i; 
+                        break;
+                    } else {
+                        var principalPaid = payment - interest;
+                        outstandingAtRecalcMonth = outstandingAtRecalcMonth - principalPaid;
+                        
+                        // Apply rounding for consistent outstanding value
+                        outstandingAtRecalcMonth = roundToRupee(outstandingAtRecalcMonth);
+                        if (outstandingAtRecalcMonth < 0) outstandingAtRecalcMonth = 0;
+
+                        if (outstandingAtRecalcMonth === 0) {
+                            loanPaidInMonths = i; 
+                            break;
+                        }
+                    }
+                }
+                
+                let remainingMonths = initialTenureMonths - loanPaidInMonths;
+                
+                if (remainingMonths > 0 && outstandingAtRecalcMonth > 0) {
+                    // Calculate NEW EMI based on the reduced principal and remaining months
+                    const rawNewEmi = calculateEMI(outstandingAtRecalcMonth, monthlyRate, remainingMonths);
+                    newEMI = roundToRupee(rawNewEmi);
+                } else if (outstandingAtRecalcMonth === 0) {
+                    // Loan paid off faster than the original term, no new EMI needed
+                    newEMI = 0; 
+                } else {
+                    newEMI = initialEMI; // Should not happen if logic is correct
+                }
+
+                // Run the schedule again with the new (lower) EMI, starting from the original start date
+                // and including all prepayments.
+                newResult = generateAmortizationSchedule(initialPrincipal, monthlyRate, newEMI, maxMonths, prepaymentsMap);
+                loanPaidInMonths = newResult.totalPayments;
+            }
+
+            // 4. Calculate Final Savings
+            const newTotalInterest = newResult.totalInterest;
+            const interestSaved = initialTotalInterest - newTotalInterest;
+            const tenureReductionMonths = initialTotalPayments - loanPaidInMonths;
+
+            // 5. Display Savings Summary
+            document.getElementById('saved-interest-output').textContent = CURRENCY_FORMAT.format(interestSaved);
+            document.getElementById('new-duration-output').textContent = `${Math.floor(loanPaidInMonths / 12)}Y ${loanPaidInMonths % 12}M (${loanPaidInMonths} Months)`;
+            document.getElementById('tenure-reduction-output').textContent = `${Math.floor(tenureReductionMonths / 12)}Y ${tenureReductionMonths % 12}M`;
+            
+            let newEmiInfoText = '';
+            if (reductionOption === 'emi' && loanPaidInMonths < initialTenureMonths) {
+                 newEmiInfoText = `Your new Monthly EMI will be **${CURRENCY_FORMAT.format(newEMI)}** starting from month **${loanPaidInMonths + 1}** of the loan.`;
+            } else if (reductionOption === 'emi' && loanPaidInMonths >= initialTenureMonths) {
+                 newEmiInfoText = `The loan was paid off early! Your EMI remained at ${CURRENCY_FORMAT.format(initialEMI)}.`;
+                 newEMI = initialEMI;
+            } else {
+                 newEmiInfoText = `Your Monthly EMI remained at ${CURRENCY_FORMAT.format(initialEMI)}.`;
+            }
+            newEmiInfoText += ` Total Prepayment made: ${CURRENCY_FORMAT.format(totalPrepaymentAmount)}.`;
+            document.getElementById('new-emi-info').innerHTML = newEmiInfoText;
+
+
+            document.getElementById('savings-summary').classList.remove('hidden');
+
+            // 6. Render the Final Schedule
+            renderSchedule(newResult.schedule, startDateString, newEMI);
+        }
+        
+        /**
+         * Renders the amortization schedule table.
+         * @param {Array} schedule - The amortization schedule array.
+         * @param {string} startDateString - Loan start month string.
+         * @param {number} [currentEMI=initialEMI] - The EMI used for the schedule display.
+         */
+        function renderSchedule(schedule, startDateString, currentEMI = initialEMI) {
+            const tbody = document.getElementById('schedule-body');
+            tbody.innerHTML = '';
+            
+            const initialEMIValue = initialEMI;
+
+            schedule.forEach(item => {
+                const row = tbody.insertRow();
+                
+                // Determine the EMI to display for this row
+                let displayEMI = item.emi;
+                
+                // For 'reduce EMI' option, show the new, lower EMI after the reduction point
+                if (Math.abs(currentEMI - initialEMIValue) > 1 && item.month > initialTotalPayments) {
+                     displayEMI = currentEMI;
+                }
+                
+                // Format for EMI change indication
+                const emiFormat = (value) => {
+                    const formatted = CURRENCY_FORMAT.format(value);
+                    // Check if the current EMI value is significantly different and lower than the initial EMI
+                    if (Math.abs(value - initialEMIValue) > 1 && value < initialEMIValue) {
+                        return `<span class="font-bold text-red-600">${formatted} (New)</span>`;
+                    }
+                    return formatted;
+                };
+                
+                // Styling for paid-off month
+                if (item.outstanding <= 0 && item.month === schedule.length) {
+                    row.classList.add('bg-green-100', 'font-bold');
+                } else if (item.isPrepaymentMonth) {
+                    row.classList.add('bg-yellow-100');
+                }
+
+                row.innerHTML = `
+                    <td class="table-cell">${item.month}</td>
+                    <td class="table-cell whitespace-nowrap">${getDateForMonth(item.month, startDateString)}</td>
+                    <td class="table-cell">${emiFormat(displayEMI)}</td>
+                    <td class="table-cell ${item.prepayment > 0 ? 'font-bold text-blue-600' : 'text-gray-400'}">${CURRENCY_FORMAT.format(item.prepayment)}</td>
+                    <td class="table-cell">${CURRENCY_FORMAT.format(item.principal)}</td>
+                    <td class="table-cell">${CURRENCY_FORMAT.format(item.interest)}</td>
+                    <td class="table-cell ${item.outstanding <= 0 ? 'text-green-700 font-extrabold' : ''}">${CURRENCY_FORMAT.format(item.outstanding)}</td>
+                `;
+            });
+        }
+        
+        // --- Initialization ---
+
+        window.onload = function() {
+            // Set default date to current month
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const defaultDate = `${year}-${month}`;
+            
+            document.getElementById('start-month').value = defaultDate;
+            
+            // Set default date for custom payment picker
+            document.getElementById('custom-payment-date').value = defaultDate;
+        }
+        
+        // Add styling for input fields and table cells using JavaScript (as Tailwind classes cannot be used in `style` block for components)
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                .input-field {
+                    /* Original input-field for select/non-grouped items */
+                    @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150;
+                }
+                .summary-card {
+                    @apply p-4 rounded-xl shadow-md border;
+                }
+                .table-header {
+                    @apply px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider;
+                }
+                .table-cell {
+                    @apply px-4 py-3 whitespace-nowrap text-right;
+                }
+                .table-cell:first-child {
+                    @apply text-center;
+                }
+                
+                /* Adjust custom input groups in the prepayment section */
+                #custom-months-div .input-field {
+                    /* Ensure inputs in the custom prepayment grid use standard styling */
+                    @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150;
+                }
+            </style>
+        `);
+
+    </script>
+</body>
+</html>
